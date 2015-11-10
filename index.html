@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>i am slackbot!</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.2/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.23/browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css" integrity="sha384-aUGj/X2zp5rLCbBxumKTCw2Z50WgIr1vs/PFN4praOTvYXWlVyh2UtNUU0KAUhAX" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js" integrity="sha512-K1qjQ+NcF2TYO/eI3M6v8EiNYZfA95pQumfvcVrTHtwQVDG+aHRqLi/ETn2uB+1JqwYqVG3LIvdm9lj6imS/pQ==" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script type="text/babel">
+      jQuery.extend({
+        parseQuerystring: function(){
+          var nvpair = {};
+          var qs = window.location.search.replace('?', '');
+          var pairs = qs.split('&');
+          $.each(pairs, function(i, v){
+            var pair = v.split('=');
+            nvpair[pair[0]] = pair[1];
+          });
+          return nvpair;
+        }
+      });
+
+      var SlackbotForm = React.createClass({
+        handleSubmit: function(e) {
+          e.preventDefault();
+          var text = this.refs.text.value.trim();
+          if (!text) {
+            return;
+          }
+          this.props.saySomething(text);
+          this.refs.text.value = '';
+          return;
+        },
+        render: function() {
+          return (
+            <div className="row col-md-12">
+              <br />
+              <div className="col-md-5">
+                <div className="input-group">
+                  <form onSubmit={this.handleSubmit}>
+                    <input type="text" className="form-control" placeholder="insert witty retort..." ref="text"/>
+                  </form>
+                  <span className="input-group-btn">
+                    <button className="btn btn-default" type="button" onClick={this.handleSubmit}>Say it!</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+      });
+
+      var SlackbotList = React.createClass({
+        render: function() {
+          return (
+            <div className="row col-md-12" style={{marginTop:50}}>
+              <div className="col-md-5">
+                <div className="panel panel-default">
+                  <div className="panel-heading"><h4>recently said</h4></div>
+                  <ul className="slackbotList list-group">
+                    {this.props.quips.map(quip => <li className="list-group-item"  style={{}}>&ldquo;{quip}&rdquo;</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )
+        }
+      })
+
+      var SlackbotSettings = React.createClass({
+        handleChange: function(e) {
+          this.props.updateChannel(e.target.value)
+        },
+        render: function() {
+          return (
+            <div className="row col-md-12">
+              <div className="col-md-2">
+                <div className="input-group">
+                  <span className="input-group-addon" id="basic-addon3">#</span>
+                  <input type="text" className="form-control" value={this.props.channel} onChange={this.handleChange} id="basic-url" aria-describedby="basic-addon3" />
+                </div>
+              </div>
+            </div>
+          )
+        }
+      })
+
+      var Slackbot = React.createClass({
+        getInitialState: function() {
+          const q = $.parseQuerystring()
+          return {
+            quips: [],
+            team: q.team,
+            token: q.token,
+            channel: q.channel || "general"
+          };
+        },
+        saySomething: function(newQuip) {
+          $.post(
+            "https://"+this.state.team+".slack.com/services/hooks/slackbot?token="+this.state.token+"&channel=%23"+this.state.channel,
+            newQuip,
+            function( data ) {
+              this.setState({
+                quips: [newQuip, ...this.state.quips]
+              })
+            }.bind(this));
+        },
+        updateChannel: function(newChannel) {
+          this.setState({
+            channel: newChannel
+          })
+        },
+        render: function() {
+          return (
+            <div className="container slackbot" style={{marginTop: 50}} >
+              <div className="page-header">
+                <h1>i am slackbot!</h1>
+              </div>
+              <SlackbotSettings
+                updateChannel={this.updateChannel}
+                channel={this.state.channel}
+                team={this.state.team}
+                token={this.state.token}
+              />
+              <SlackbotForm saySomething={this.saySomething}/>
+                {this.state.quips.length > 0 ? <SlackbotList quips={this.state.quips}/> : <div></div>}
+            </div>
+          );
+        }
+      });
+
+
+      ReactDOM.render(
+        <Slackbot />,
+        document.getElementById('content')
+      );
+    </script>
+  </body>
+</html>
